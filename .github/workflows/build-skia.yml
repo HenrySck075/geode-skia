@@ -8,7 +8,7 @@ jobs:
     name: Build ${{ matrix.config.name }}
     runs-on: ${{ matrix.config.os }}
     permissions:
-      contents: write
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -22,6 +22,8 @@ jobs:
           - name: Android64
             os: ubuntu-latest
             target: Android64
+    outputs:
+      skia_version: ${{ steps.version.outputs.skia_version }}
 
     steps:
       - name: Checkout repository
@@ -69,18 +71,10 @@ jobs:
         id: version
         run: |
           cd skia
-          # Get version from milestone file or git describe
-          if [ -f "RELEASE_NOTES.md" ]; then
-            VERSION=$(git describe --tags --always 2>/dev/null || \
-              echo "unknown")
-          else
-            VERSION=$(git rev-parse --short HEAD)
-          fi
-          # Add timestamp postfix for multiple builds of same version
-          TIMESTAMP=$(date +%Y%m%d-%H%M%S)
-          VERSION_WITH_POSTFIX="${VERSION}-${TIMESTAMP}"
-          echo "skia_version=$VERSION_WITH_POSTFIX" >> $GITHUB_OUTPUT
-          echo "Skia Version: $VERSION_WITH_POSTFIX"
+          # Get version from git short hash
+          VERSION=$(git rev-parse --short HEAD)
+          echo "skia_version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Skia Version: $VERSION"
         shell: bash
 
       - name: Configure Build (Windows)
@@ -194,16 +188,46 @@ jobs:
           Compress-Archive -Path * `
             -DestinationPath ../../skia-${{ matrix.config.name }}.zip
 
-      - name: Create Release and Upload Assets
-        uses: softprops/action-gh-release@v1
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
         with:
-          tag_name: v${{ steps.version.outputs.skia_version }}
-          name: Skia ${{ steps.version.outputs.skia_version }}
-          draft: false
-          prerelease: false
-          files: |
+          name: skia-${{ matrix.config.name }}
+          path: |
             skia-*.tar.gz
             skia-*.zip
-          fail_on_unmatched_files: false
+          retention-days: 1
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download All Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Generate Release Tag
+        id: tag
+        run: |
+          # Use Skia version from build job, add timestamp for uniqueness
+          TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+          TAG="v${{ needs.build.outputs.skia_version }}-${TIMESTAMP}"
+          echo "release_tag=$TAG" >> $GITHUB_OUTPUT
+          echo "Release Tag: $TAG"
+
+      - name: Create Release and Upload Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.release_tag }}
+          name: >-
+            Skia ${{ needs.build.outputs.skia_version }}
+            (${{ steps.tag.outputs.release_tag }})
+          draft: false
+          prerelease: false
+          files: artifacts/skia-*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
