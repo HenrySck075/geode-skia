@@ -85,7 +85,7 @@ jobs:
         run: |
           cd skia
           $env:PATH = "$env:GITHUB_WORKSPACE\depot_tools;$env:PATH"
-          python bin/gn gen out/Release --args='is_official_build=true `
+          python third_party/gn/gn gen out/Release --args='is_official_build=true `
             is_component_build=false skia_use_system_expat=false `
             skia_use_system_libjpeg_turbo=false skia_use_system_libpng=false `
             skia_use_system_libwebp=false skia_use_system_zlib=false `
@@ -95,7 +95,7 @@ jobs:
         if: matrix.config.name == 'macOS'
         run: |
           cd skia
-          bin/gn gen out/Release --args='is_official_build=true \
+          third_party/gn/gn gen out/Release --args='is_official_build=true \
             is_component_build=false skia_use_system_expat=false \
             skia_use_system_libjpeg_turbo=false skia_use_system_libpng=false \
             skia_use_system_libwebp=false skia_use_system_zlib=false \
@@ -105,7 +105,7 @@ jobs:
         if: matrix.config.target == 'Android64'
         run: |
           cd skia
-          bin/gn gen out/Release --args='is_official_build=true \
+          third_party/gn/gn gen out/Release --args='is_official_build=true \
             is_component_build=false skia_use_system_expat=false \
             skia_use_system_libjpeg_turbo=false skia_use_system_libpng=false \
             skia_use_system_libwebp=false skia_use_system_zlib=false \
