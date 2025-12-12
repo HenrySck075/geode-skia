@@ -81,18 +81,18 @@ jobs:
 
       - name: Configure Build (Windows)
         if: matrix.config.name == 'Windows'
-        shell: pwsh
+        shell: bash
         run: |
           cd skia
-          $env:PATH = "$env:GITHUB_WORKSPACE\depot_tools;$env:PATH"
-          python third_party/gn/gn gen out/Release --args='is_official_build=true `
-            is_component_build=false skia_use_system_expat=false `
-            skia_use_system_libjpeg_turbo=false skia_use_system_libpng=false `
-            skia_use_system_libwebp=false skia_use_system_zlib=false `
-            target_cpu=\"x64\"'
+          third_party/gn/gn gen out/Release --args='is_official_build=true \
+            is_component_build=false skia_use_system_expat=false \
+            skia_use_system_libjpeg_turbo=false skia_use_system_libpng=false \
+            skia_use_system_libwebp=false skia_use_system_zlib=false \
+            target_cpu="x64"'
 
       - name: Configure Build (macOS)
         if: matrix.config.name == 'macOS'
+        shell: bash
         run: |
           cd skia
           third_party/gn/gn gen out/Release --args='is_official_build=true \
@@ -103,6 +103,7 @@ jobs:
 
       - name: Configure Build (Android64)
         if: matrix.config.target == 'Android64'
+        shell: bash
         run: |
           cd skia
           third_party/gn/gn gen out/Release --args='is_official_build=true \
