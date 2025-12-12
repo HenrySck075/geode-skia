@@ -1,0 +1,233 @@
+name: Build Skia Binaries
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build ${{ matrix.config.name }}
+    runs-on: ${{ matrix.config.os }}
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - name: Windows
+            os: windows-latest
+
+          - name: macOS
+            os: macos-latest
+
+          - name: Android64
+            os: ubuntu-latest
+            target: Android64
+    outputs:
+      skia_version: ${{ steps.version.outputs.skia_version }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install depot_tools (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          # Clone depot_tools - using HEAD as it's designed to auto-update
+          git clone \
+            https://chromium.googlesource.com/chromium/tools/depot_tools.git
+          echo "$GITHUB_WORKSPACE/depot_tools" >> $GITHUB_PATH
+          export PATH="$GITHUB_WORKSPACE/depot_tools:$PATH"
+
+      - name: Install depot_tools (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          # Clone depot_tools - using HEAD as it's designed to auto-update
+          git clone `
+            https://chromium.googlesource.com/chromium/tools/depot_tools.git
+          echo "$env:GITHUB_WORKSPACE\depot_tools" | `
+            Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Set up Android NDK
+        if: matrix.config.target == 'Android64'
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r25c
+          local-cache: true
+
+      - name: Clone Skia
+        run: |
+          # Clone latest Skia - repository doesn't use stable releases
+          git clone --depth 1 https://skia.googlesource.com/skia.git
+          cd skia
+          python3 tools/git-sync-deps
+
+      - name: Get Skia Version
+        id: version
+        run: |
+          cd skia
+          # Get version from git short hash
+          VERSION=$(git rev-parse --short HEAD)
+          echo "skia_version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Skia Version: $VERSION"
+        shell: bash
+
+      - name: Configure Build (Windows)
+        if: matrix.config.name == 'Windows'
+        shell: pwsh
+        run: |
+          cd skia
+          $env:PATH = "$env:GITHUB_WORKSPACE\depot_tools;$env:PATH"
+          python bin/gn gen out/Release --args='is_official_build=true `
+            is_component_build=false skia_use_system_expat=false `
+            skia_use_system_libjpeg_turbo=false skia_use_system_libpng=false `
+            skia_use_system_libwebp=false skia_use_system_zlib=false `
+            target_cpu=\"x64\"'
+
+      - name: Configure Build (macOS)
+        if: matrix.config.name == 'macOS'
+        run: |
+          cd skia
+          bin/gn gen out/Release --args='is_official_build=true \
+            is_component_build=false skia_use_system_expat=false \
+            skia_use_system_libjpeg_turbo=false skia_use_system_libpng=false \
+            skia_use_system_libwebp=false skia_use_system_zlib=false \
+            target_cpu="x64" extra_cflags=["-mmacosx-version-min=10.13"]'
+
+      - name: Configure Build (Android64)
+        if: matrix.config.target == 'Android64'
+        run: |
+          cd skia
+          bin/gn gen out/Release --args='is_official_build=true \
+            is_component_build=false skia_use_system_expat=false \
+            skia_use_system_libjpeg_turbo=false skia_use_system_libpng=false \
+            skia_use_system_libwebp=false skia_use_system_zlib=false \
+            target_os="android" target_cpu="arm64" ndk="'$ANDROID_NDK_HOME'"'
+
+      - name: Build Skia (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          cd skia
+          ninja -C out/Release
+
+      - name: Build Skia (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          cd skia
+          $env:PATH = "$env:GITHUB_WORKSPACE\depot_tools;$env:PATH"
+          ninja -C out/Release
+
+      - name: Package binaries and headers (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          cd skia
+          mkdir -p package/lib
+          mkdir -p package/include
+
+          # Copy libraries (error suppression is intentional - different
+          # configs produce different combinations of static/dynamic libs)
+          if [ "${{ matrix.config.name }}" = "macOS" ]; then
+            cp out/Release/*.a package/lib/ 2>/dev/null || true
+            cp out/Release/libskia.dylib package/lib/ 2>/dev/null || true
+          elif [ "${{ matrix.config.target }}" = "Android64" ]; then
+            cp out/Release/*.a package/lib/ 2>/dev/null || true
+            cp out/Release/*.so package/lib/ 2>/dev/null || true
+          fi
+
+          # Verify at least some libraries were built
+          if [ -z "$(ls -A package/lib/)" ]; then
+            echo "Error: No libraries were built"
+            exit 1
+          fi
+
+          # Copy headers
+          cp -r include/* package/include/
+
+      - name: Package binaries and headers (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          cd skia
+          New-Item -ItemType Directory -Force -Path package/lib
+          New-Item -ItemType Directory -Force -Path package/include
+
+          # Copy libraries (error suppression is intentional - different
+          # configs produce different combinations of static/dynamic libs)
+          Copy-Item -Path "out/Release/*.lib" `
+            -Destination "package/lib/" -ErrorAction SilentlyContinue
+          Copy-Item -Path "out/Release/*.dll" `
+            -Destination "package/lib/" -ErrorAction SilentlyContinue
+
+          # Verify at least some libraries were built
+          if ((Get-ChildItem package/lib/).Count -eq 0) {
+            Write-Error "Error: No libraries were built"
+            exit 1
+          }
+
+          # Copy headers
+          Copy-Item -Path "include/*" -Destination "package/include/" `
+            -Recurse -Force
+
+      - name: Create archive (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          cd skia/package
+          tar czf ../../skia-${{ matrix.config.name }}.tar.gz .
+
+      - name: Create archive (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          cd skia/package
+          Compress-Archive -Path * `
+            -DestinationPath ../../skia-${{ matrix.config.name }}.zip
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: skia-${{ matrix.config.name }}
+          path: |
+            skia-*.tar.gz
+            skia-*.zip
+          retention-days: 1
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download All Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Generate Release Tag
+        id: tag
+        run: |
+          # Use Skia version from build job, add timestamp for uniqueness
+          TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+          TAG="v${{ needs.build.outputs.skia_version }}-${TIMESTAMP}"
+          echo "release_tag=$TAG" >> $GITHUB_OUTPUT
+          echo "Release Tag: $TAG"
+
+      - name: Create Release and Upload Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.release_tag }}
+          name: >-
+            Skia ${{ needs.build.outputs.skia_version }}
+            (${{ steps.tag.outputs.release_tag }})
+          draft: false
+          prerelease: false
+          files: artifacts/skia-*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

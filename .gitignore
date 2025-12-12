@@ -1,0 +1,11 @@
+# Skia build artifacts
+skia/
+depot_tools/
+
+# Build outputs
+*.tar.gz
+*.zip
+
+# System files
+.DS_Store
+Thumbs.db
