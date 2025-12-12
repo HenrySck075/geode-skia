@@ -33,6 +33,7 @@ jobs:
       - name: Install depot_tools (Unix)
         if: runner.os != 'Windows'
         run: |
+          # Clone depot_tools - using HEAD as it's designed to auto-update
           git clone \
             https://chromium.googlesource.com/chromium/tools/depot_tools.git
           echo "$GITHUB_WORKSPACE/depot_tools" >> $GITHUB_PATH
@@ -42,6 +43,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
+          # Clone depot_tools - using HEAD as it's designed to auto-update
           git clone `
             https://chromium.googlesource.com/chromium/tools/depot_tools.git
           echo "$env:GITHUB_WORKSPACE\depot_tools" | `
@@ -56,6 +58,7 @@ jobs:
 
       - name: Clone Skia
         run: |
+          # Clone latest Skia - repository doesn't use stable releases
           git clone --depth 1 https://skia.googlesource.com/skia.git
           cd skia
           python3 tools/git-sync-deps
@@ -113,13 +116,20 @@ jobs:
           mkdir -p package/lib
           mkdir -p package/include
 
-          # Copy libraries
+          # Copy libraries (error suppression is intentional - different
+          # configs produce different combinations of static/dynamic libs)
           if [ "${{ matrix.config.name }}" = "macOS" ]; then
             cp out/Release/*.a package/lib/ 2>/dev/null || true
             cp out/Release/libskia.dylib package/lib/ 2>/dev/null || true
           elif [ "${{ matrix.config.target }}" = "Android64" ]; then
             cp out/Release/*.a package/lib/ 2>/dev/null || true
             cp out/Release/*.so package/lib/ 2>/dev/null || true
+          fi
+
+          # Verify at least some libraries were built
+          if [ -z "$(ls -A package/lib/)" ]; then
+            echo "Error: No libraries were built"
+            exit 1
           fi
 
           # Copy headers
@@ -133,11 +143,18 @@ jobs:
           New-Item -ItemType Directory -Force -Path package/lib
           New-Item -ItemType Directory -Force -Path package/include
 
-          # Copy libraries
+          # Copy libraries (error suppression is intentional - different
+          # configs produce different combinations of static/dynamic libs)
           Copy-Item -Path "out/Release/*.lib" `
             -Destination "package/lib/" -ErrorAction SilentlyContinue
           Copy-Item -Path "out/Release/*.dll" `
             -Destination "package/lib/" -ErrorAction SilentlyContinue
+
+          # Verify at least some libraries were built
+          if ((Get-ChildItem package/lib/).Count -eq 0) {
+            Write-Error "Error: No libraries were built"
+            exit 1
+          }
 
           # Copy headers
           Copy-Item -Path "include/*" -Destination "package/include/" `
