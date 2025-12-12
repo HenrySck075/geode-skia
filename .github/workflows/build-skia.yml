@@ -15,7 +15,7 @@ jobs:
     permissions:
       contents: read
     env:
-      GN_ARGS: 'is_official_build=true skia_enable_pdf=false is_component_build=false skia_use_system_expat=false skia_use_system_libjpeg_turbo=false skia_use_system_libpng=false skia_use_system_libwebp=false skia_use_system_zlib=false skia_use_system_freetype2=false skia_use_system_icu=false skia_use_system_harfbuzz=false'
+      GN_ARGS: 'is_official_build=true skia_enable_pdf=false is_component_build=true skia_use_system_expat=false skia_use_system_libjpeg_turbo=false skia_use_system_libpng=false skia_use_system_libwebp=false skia_use_system_zlib=false skia_use_system_freetype2=false skia_use_system_icu=false skia_use_system_harfbuzz=false'
     strategy:
       fail-fast: false
       matrix:
@@ -151,15 +151,10 @@ jobs:
           mkdir -p package/lib
           mkdir -p package/include
 
-          # Copy libraries (error suppression is intentional - different
-          # configs produce different combinations of static/dynamic libs)
-          if [ "${{ matrix.config.name }}" = "macOS" ]; then
-            cp out/Release/*.a package/lib/ 2>/dev/null || true
-            cp out/Release/libskia.dylib package/lib/ 2>/dev/null || true
-          elif [ "${{ matrix.config.target }}" = "Android64" ]; then
-            cp out/Release/*.a package/lib/ 2>/dev/null || true
-            cp out/Release/*.so package/lib/ 2>/dev/null || true
-          fi
+          # Copy shared libraries and static libs
+          cp out/Release/*.so* package/lib/ 2>/dev/null || true
+          cp out/Release/*.a package/lib/ 2>/dev/null || true
+          cp out/Release/*.dylib package/lib/ 2>/dev/null || true
 
           # Verify at least some libraries were built
           if [ -z "$(ls -A package/lib/)" ]; then
