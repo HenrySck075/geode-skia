@@ -26,9 +26,9 @@ jobs:
           - name: macOS
             os: macos-latest
 
-          - name: Android64
-            os: ubuntu-latest
-            target: Android64
+          #- name: Android64
+          #  os: ubuntu-latest
+          #  target: Android64
     outputs:
       skia_version: ${{ steps.version.outputs.skia_version }}
 
@@ -98,6 +98,11 @@ jobs:
           python3 tools/git-sync-deps
           python3 bin/fetch-ninja
           python3 bin/fetch-gn
+
+      - name: Patch find_headers.py
+        run: |
+          cd skia
+          sed -i '42a\   print(desc_json_txt)' gn/find_headers.py
 
       - name: Get Skia Version
         id: version
