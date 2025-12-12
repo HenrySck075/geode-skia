@@ -14,6 +14,8 @@ jobs:
     runs-on: ${{ matrix.config.os }}
     permissions:
       contents: read
+    env:
+      GN_ARGS: 'is_official_build=true skia_enable_pdf=false is_component_build=false skia_use_system_expat=false skia_use_system_libjpeg_turbo=false skia_use_system_libpng=false skia_use_system_libwebp=false skia_use_system_zlib=false skia_use_system_freetype=false skia_use_system_icu=false'
     strategy:
       fail-fast: false
       matrix:
@@ -66,12 +68,19 @@ jobs:
           local-cache: true
 
       - name: Install Clang (Unix)
-        if: runner.os != 'Windows'
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y clang lld
           echo "CC=clang" >> $GITHUB_ENV
           echo "CXX=clang++" >> $GITHUB_ENV
+
+      - name: Install Clang (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install llvm
+          echo "CC=$(brew --prefix llvm)/bin/clang" >> $GITHUB_ENV
+          echo "CXX=$(brew --prefix llvm)/bin/clang++" >> $GITHUB_ENV
 
       - name: Install Clang (Windows)
         if: runner.os == 'Windows'
@@ -105,21 +114,21 @@ jobs:
         shell: bash
         run: |
           cd skia
-          third_party/gn/gn gen out/Release --args='is_official_build=true skia_enable_pdf=false is_component_build=false skia_use_system_expat=false skia_use_system_libjpeg_turbo=false skia_use_system_libpng=false skia_use_system_libwebp=false skia_use_system_zlib=false target_cpu="x64" clang_win="C:\Program Files\LLVM"'
+          third_party/gn/gn gen out/Release --args='${{ env.GN_ARGS }} target_cpu="x64" clang_win="C:\Program Files\LLVM"'
 
       - name: Configure Build (macOS)
         if: matrix.config.name == 'macOS'
         shell: bash
         run: |
           cd skia
-          third_party/gn/gn gen out/Release --args='is_official_build=true skia_enable_pdf=false is_component_build=false skia_use_system_expat=false skia_use_system_libjpeg_turbo=false skia_use_system_libpng=false skia_use_system_libwebp=false skia_use_system_zlib=false target_cpu="x64" extra_cflags=["-mmacosx-version-min=10.13"] cc="clang" cxx="clang++"'
+          third_party/gn/gn gen out/Release --args='${{ env.GN_ARGS }} target_cpu="x64" extra_cflags=["-mmacosx-version-min=10.13"] cc="clang" cxx="clang++"'
 
       - name: Configure Build (Android64)
         if: matrix.config.target == 'Android64'
         shell: bash
         run: |
           cd skia
-          third_party/gn/gn gen out/Release --args='is_official_build=true skia_enable_pdf=false is_component_build=false skia_use_system_expat=false skia_use_system_libjpeg_turbo=false skia_use_system_libpng=false skia_use_system_libwebp=false skia_use_system_zlib=false target_os="android" target_cpu="arm64" ndk="'$ANDROID_NDK_HOME'" cc="clang" cxx="clang++"'
+          third_party/gn/gn gen out/Release --args='${{ env.GN_ARGS }} target_os="android" target_cpu="arm64" ndk="'$ANDROID_NDK_HOME'" cc="clang" cxx="clang++"'
 
       - name: Build Skia (Unix)
         if: runner.os != 'Windows'
