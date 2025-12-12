@@ -84,21 +84,21 @@ jobs:
         shell: bash
         run: |
           cd skia
-          third_party/gn/gn gen out/Release --args='is_official_build=true is_component_build=false skia_use_system_expat=false skia_use_system_libjpeg_turbo=false skia_use_system_libpng=false skia_use_system_libwebp=false skia_use_system_zlib=false target_cpu="x64"'
+          third_party/gn/gn gen out/Release --args='is_official_build=true skia_enable_pdf=false is_component_build=false skia_use_system_expat=false skia_use_system_libjpeg_turbo=false skia_use_system_libpng=false skia_use_system_libwebp=false skia_use_system_zlib=false target_cpu="x64"'
 
       - name: Configure Build (macOS)
         if: matrix.config.name == 'macOS'
         shell: bash
         run: |
           cd skia
-          third_party/gn/gn gen out/Release --args='is_official_build=true is_component_build=false skia_use_system_expat=false skia_use_system_libjpeg_turbo=false skia_use_system_libpng=false skia_use_system_libwebp=false skia_use_system_zlib=false target_cpu="x64" extra_cflags=["-mmacosx-version-min=10.13"]'
+          third_party/gn/gn gen out/Release --args='is_official_build=true skia_enable_pdf=false is_component_build=false skia_use_system_expat=false skia_use_system_libjpeg_turbo=false skia_use_system_libpng=false skia_use_system_libwebp=false skia_use_system_zlib=false target_cpu="x64" extra_cflags=["-mmacosx-version-min=10.13"]'
 
       - name: Configure Build (Android64)
         if: matrix.config.target == 'Android64'
         shell: bash
         run: |
           cd skia
-          third_party/gn/gn gen out/Release --args='is_official_build=true is_component_build=false skia_use_system_expat=false skia_use_system_libjpeg_turbo=false skia_use_system_libpng=false skia_use_system_libwebp=false skia_use_system_zlib=false target_os="android" target_cpu="arm64" ndk="'$ANDROID_NDK_HOME'"'
+          third_party/gn/gn gen out/Release --args='is_official_build=true skia_enable_pdf=false is_component_build=false skia_use_system_expat=false skia_use_system_libjpeg_turbo=false skia_use_system_libpng=false skia_use_system_libwebp=false skia_use_system_zlib=false target_os="android" target_cpu="arm64" ndk="'$ANDROID_NDK_HOME'"'
 
       - name: Build Skia (Unix)
         if: runner.os != 'Windows'
