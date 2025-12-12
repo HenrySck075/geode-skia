@@ -15,7 +15,7 @@ jobs:
     permissions:
       contents: read
     env:
-      GN_ARGS: 'is_official_build=true skia_enable_pdf=false is_component_build=true skia_use_system_expat=false skia_use_system_libjpeg_turbo=false skia_use_system_libpng=false skia_use_system_libwebp=false skia_use_system_zlib=false skia_use_system_freetype2=false skia_use_system_icu=false skia_use_system_harfbuzz=false'
+      GN_ARGS: 'is_official_build=true skia_enable_pdf=false is_component_build=true skia_use_system_expat=false skia_use_system_libjpeg_turbo=false skia_use_system_libpng=false skia_use_system_libwebp=false skia_use_system_zlib=false skia_use_system_icu=false skia_use_system_harfbuzz=false'
     strategy:
       fail-fast: false
       matrix:
@@ -26,9 +26,9 @@ jobs:
           - name: macOS
             os: macos-latest
 
-          #- name: Android64
-          #  os: ubuntu-latest
-          #  target: Android64
+          - name: Android64
+            os: ubuntu-latest
+            target: Android64
     outputs:
       skia_version: ${{ steps.version.outputs.skia_version }}
 
@@ -99,10 +99,17 @@ jobs:
           python3 bin/fetch-ninja
           python3 bin/fetch-gn
 
-      - name: Patch find_headers.py
+      - name: Patch find_headers.py (non-BSD)
+        if: matrix.config.name != 'macOS'
         run: |
           cd skia
           sed -i '42a\   print(desc_json_txt)' gn/find_headers.py
+
+      - name: Patch find_headers.py (BSD)
+        if: matrix.config.name == 'macOS'
+        run: |
+          cd skia
+          sed -i '' '42a\   print(desc_json_txt)' gn/find_headers.py
 
       - name: Get Skia Version
         id: version
@@ -133,7 +140,7 @@ jobs:
         shell: bash
         run: |
           cd skia
-          third_party/gn/gn gen out/Release --args='${{ env.GN_ARGS }} target_os="android" target_cpu="arm64" ndk="'$ANDROID_NDK_HOME'" cc="clang" cxx="clang++"'
+          third_party/gn/gn gen out/Release --args='${{ env.GN_ARGS }} skia_use_system_freetype2=false target_os="android" target_cpu="arm64" ndk="'$ANDROID_NDK_HOME'" cc="clang" cxx="clang++"'
 
       - name: Build Skia (Unix)
         if: runner.os != 'Windows'
