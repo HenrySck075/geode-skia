@@ -8,7 +8,7 @@ jobs:
     name: Build ${{ matrix.config.name }}
     runs-on: ${{ matrix.config.os }}
     permissions:
-      contents: read
+      contents: write
     strategy:
       fail-fast: false
       matrix:
@@ -64,6 +64,24 @@ jobs:
           git clone --depth 1 https://skia.googlesource.com/skia.git
           cd skia
           python3 tools/git-sync-deps
+
+      - name: Get Skia Version
+        id: version
+        run: |
+          cd skia
+          # Get version from milestone file or git describe
+          if [ -f "RELEASE_NOTES.md" ]; then
+            VERSION=$(git describe --tags --always 2>/dev/null || \
+              echo "unknown")
+          else
+            VERSION=$(git rev-parse --short HEAD)
+          fi
+          # Add timestamp postfix for multiple builds of same version
+          TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+          VERSION_WITH_POSTFIX="${VERSION}-${TIMESTAMP}"
+          echo "skia_version=$VERSION_WITH_POSTFIX" >> $GITHUB_OUTPUT
+          echo "Skia Version: $VERSION_WITH_POSTFIX"
+        shell: bash
 
       - name: Configure Build (Windows)
         if: matrix.config.name == 'Windows'
@@ -176,18 +194,16 @@ jobs:
           Compress-Archive -Path * `
             -DestinationPath ../../skia-${{ matrix.config.name }}.zip
 
-      - name: Upload artifacts (Unix)
-        if: runner.os != 'Windows'
-        uses: actions/upload-artifact@v4
+      - name: Create Release and Upload Assets
+        uses: softprops/action-gh-release@v1
         with:
-          name: skia-${{ matrix.config.name }}
-          path: skia-${{ matrix.config.name }}.tar.gz
-          retention-days: 30
-
-      - name: Upload artifacts (Windows)
-        if: runner.os == 'Windows'
-        uses: actions/upload-artifact@v4
-        with:
-          name: skia-${{ matrix.config.name }}
-          path: skia-${{ matrix.config.name }}.zip
-          retention-days: 30
+          tag_name: v${{ steps.version.outputs.skia_version }}
+          name: Skia ${{ steps.version.outputs.skia_version }}
+          draft: false
+          prerelease: false
+          files: |
+            skia-*.tar.gz
+            skia-*.zip
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
