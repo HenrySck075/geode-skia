@@ -99,18 +99,6 @@ jobs:
           python3 bin/fetch-ninja
           python3 bin/fetch-gn
 
-      - name: Patch find_headers.py (non-BSD)
-        if: matrix.config.name != 'macOS'
-        run: |
-          cd skia
-          sed -i '42a\   print(desc_json_txt)' gn/find_headers.py
-
-      - name: Patch find_headers.py (BSD)
-        if: matrix.config.name == 'macOS'
-        run: |
-          cd skia
-          sed -i '' '42a\ \ \ print(desc_json_txt)' gn/find_headers.py
-
       - name: Get Skia Version
         id: version
         run: |
