@@ -15,7 +15,7 @@ jobs:
     permissions:
       contents: read
     env:
-      GN_ARGS: 'is_official_build=true skia_enable_pdf=false is_component_build=true skia_use_system_expat=false skia_use_system_libjpeg_turbo=false skia_use_system_libpng=false skia_use_system_libwebp=false skia_use_system_zlib=false skia_use_system_icu=false skia_use_system_harfbuzz=false'
+      GN_ARGS: 'is_official_build=true skia_enable_pdf=false skia_use_system_expat=false skia_use_system_libjpeg_turbo=false skia_use_system_libpng=false skia_use_system_libwebp=false skia_use_system_zlib=false skia_use_system_icu=false skia_use_system_harfbuzz=false'
     strategy:
       fail-fast: false
       matrix:
@@ -151,14 +151,12 @@ jobs:
           mkdir -p package/lib
           mkdir -p package/include
 
-          # Copy shared libraries and static libs
-          cp out/Release/*.so* package/lib/ 2>/dev/null || true
+          # Copy static libraries only
           cp out/Release/*.a package/lib/ 2>/dev/null || true
-          cp out/Release/*.dylib package/lib/ 2>/dev/null || true
 
-          # Verify at least some libraries were built
+          # Verify libraries were built
           if [ -z "$(ls -A package/lib/)" ]; then
-            echo "Error: No libraries were built"
+            echo "Error: No static libraries were built"
             exit 1
           fi
 
@@ -173,22 +171,17 @@ jobs:
           New-Item -ItemType Directory -Force -Path package/lib
           New-Item -ItemType Directory -Force -Path package/include
 
-          # Copy libraries (error suppression is intentional - different
-          # configs produce different combinations of static/dynamic libs)
-          Copy-Item -Path "out/Release/*.lib" `
-            -Destination "package/lib/" -ErrorAction SilentlyContinue
-          Copy-Item -Path "out/Release/*.dll" `
-            -Destination "package/lib/" -ErrorAction SilentlyContinue
+          # Copy static libraries only
+          Copy-Item -Path "out/Release/*.lib" -Destination "package/lib/" -ErrorAction SilentlyContinue
 
           # Verify at least some libraries were built
           if ((Get-ChildItem package/lib/).Count -eq 0) {
-            Write-Error "Error: No libraries were built"
+             Write-Error "Error: No static libraries were built"
             exit 1
           }
 
           # Copy headers
-          Copy-Item -Path "include/*" -Destination "package/include/" `
-            -Recurse -Force
+          Copy-Item -Path "include/*" -Destination "package/include/" -Recurse -Force
 
       - name: Create archive (Unix)
         if: runner.os != 'Windows'
@@ -201,8 +194,7 @@ jobs:
         shell: pwsh
         run: |
           cd skia/package
-          Compress-Archive -Path * `
-            -DestinationPath ../../skia-${{ matrix.config.name }}.zip
+          Compress-Archive -Path * -DestinationPath ../../skia-${{ matrix.config.name }}.zip
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
