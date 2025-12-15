@@ -171,8 +171,9 @@ jobs:
           New-Item -ItemType Directory -Force -Path package/lib
           New-Item -ItemType Directory -Force -Path package/include
 
-          # Copy static libraries only
+          # Copy static libraries and dll files
           Copy-Item -Path "out/Release/*.lib" -Destination "package/lib/" -ErrorAction SilentlyContinue
+          Copy-Item -Path "out/Release/*.dll" -Destination "package/lib/" -ErrorAction SilentlyContinue
 
           # Verify at least some libraries were built
           if ((Get-ChildItem package/lib/).Count -eq 0) {
