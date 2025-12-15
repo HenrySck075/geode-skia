@@ -114,7 +114,7 @@ jobs:
         shell: bash
         run: |
           cd skia
-          third_party/gn/gn gen out/Release --args='${{ env.GN_ARGS }} is_component_build=true target_cpu="x64" clang_win="C:\Program Files\LLVM"'
+          third_party/gn/gn gen out/Release --args='${{ env.GN_ARGS }} is_component_build=false extra_cflags=["/MD"] extra_cflags_cc=["/MD"] target_cpu="x64" clang_win="C:\Program Files\LLVM"'
 
       - name: Configure Build (macOS)
         if: matrix.config.name == 'macOS'
@@ -173,7 +173,7 @@ jobs:
 
           # Copy static libraries and dll files
           Copy-Item -Path "out/Release/*.lib" -Destination "package/lib/" -ErrorAction SilentlyContinue
-          Copy-Item -Path "out/Release/*.dll" -Destination "package/lib/" -ErrorAction SilentlyContinue
+          # Copy-Item -Path "out/Release/*.dll" -Destination "package/lib/" -ErrorAction SilentlyContinue
 
           # Verify at least some libraries were built
           if ((Get-ChildItem package/lib/).Count -eq 0) {
