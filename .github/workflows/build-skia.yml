@@ -114,7 +114,7 @@ jobs:
         shell: bash
         run: |
           cd skia
-          third_party/gn/gn gen out/Release --args='${{ env.GN_ARGS }} target_cpu="x64" clang_win="C:\Program Files\LLVM"'
+          third_party/gn/gn gen out/Release --args='${{ env.GN_ARGS }} is_component_build=true target_cpu="x64" clang_win="C:\Program Files\LLVM"'
 
       - name: Configure Build (macOS)
         if: matrix.config.name == 'macOS'
