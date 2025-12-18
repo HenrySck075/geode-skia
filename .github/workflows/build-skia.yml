@@ -178,7 +178,8 @@ jobs:
 
       - name: Package headers
         # Only package headers once since they're the same across all platforms
-        if: matrix.config.name == 'Windows'
+        # Packaging this on windows breaks the archive god dayum
+        if: matrix.config.name == 'Android64'
         shell: bash
         run: |
           cd skia
@@ -207,7 +208,7 @@ jobs:
 
       - name: Create headers archive
         # Only create headers archive once since they're the same across all platforms
-        if: matrix.config.name == 'Windows'
+        if: matrix.config.name == 'Android64'
         shell: bash
         run: |
           cd skia/package-headers
