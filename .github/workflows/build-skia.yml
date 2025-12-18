@@ -144,66 +144,102 @@ jobs:
           $env:PATH = "$env:GITHUB_WORKSPACE\depot_tools;$env:PATH"
           ninja -C out/Release
 
-      - name: Package binaries and headers (Unix)
+      - name: Package binaries (Unix)
         if: runner.os != 'Windows'
         run: |
           cd skia
-          mkdir -p package/lib
-          mkdir -p package/include
+          mkdir -p package-bin/lib
 
           # Copy static libraries only
-          cp out/Release/*.a package/lib/ 2>/dev/null || true
+          cp out/Release/*.a package-bin/lib/ 2>/dev/null || true
 
           # Verify libraries were built
-          if [ -z "$(ls -A package/lib/)" ]; then
+          if [ -z "$(ls -A package-bin/lib/)" ]; then
             echo "Error: No static libraries were built"
             exit 1
           fi
 
-          # Copy headers
-          cp -r include/* package/include/
-
-      - name: Package binaries and headers (Windows)
+      - name: Package binaries (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           cd skia
-          New-Item -ItemType Directory -Force -Path package/lib
-          New-Item -ItemType Directory -Force -Path package/include
+          New-Item -ItemType Directory -Force -Path package-bin/lib
 
           # Copy static libraries and dll files
-          Copy-Item -Path "out/Release/*.lib" -Destination "package/lib/" -ErrorAction SilentlyContinue
-          # Copy-Item -Path "out/Release/*.dll" -Destination "package/lib/" -ErrorAction SilentlyContinue
+          Copy-Item -Path "out/Release/*.lib" -Destination "package-bin/lib/" -ErrorAction SilentlyContinue
+          # Copy-Item -Path "out/Release/*.dll" -Destination "package-bin/lib/" -ErrorAction SilentlyContinue
 
           # Verify at least some libraries were built
-          if ((Get-ChildItem package/lib/).Count -eq 0) {
+          if ((Get-ChildItem package-bin/lib/).Count -eq 0) {
              Write-Error "Error: No static libraries were built"
             exit 1
           }
 
-          # Copy headers
-          Copy-Item -Path "include/*" -Destination "package/include/" -Recurse -Force
-
-      - name: Create archive (Unix)
+      - name: Package headers (Unix)
         if: runner.os != 'Windows'
         run: |
-          cd skia/package
-          tar czf ../../skia-${{ matrix.config.name }}.tar.gz .
+          cd skia
+          mkdir -p package-headers/include
 
-      - name: Create archive (Windows)
+          # Copy headers from include directory
+          cp -r include/* package-headers/include/
+
+          # Copy headers from modules directory
+          if [ -d "modules" ]; then
+            cp -r modules package-headers/include/
+          fi
+
+      - name: Package headers (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          cd skia/package
-          Compress-Archive -Path * -DestinationPath ../../skia-${{ matrix.config.name }}.zip
+          cd skia
+          New-Item -ItemType Directory -Force -Path package-headers/include
+
+          # Copy headers from include directory
+          Copy-Item -Path "include/*" -Destination "package-headers/include/" -Recurse -Force
+
+          # Copy headers from modules directory
+          if (Test-Path "modules") {
+            Copy-Item -Path "modules" -Destination "package-headers/include/" -Recurse -Force
+          }
+
+      - name: Create binaries archive (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          cd skia/package-bin
+          tar czf ../../skia-${{ matrix.config.name }}-binaries.tar.gz .
+
+      - name: Create binaries archive (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          cd skia/package-bin
+          Compress-Archive -Path * -DestinationPath ../../skia-${{ matrix.config.name }}-binaries.zip
+
+      - name: Create headers archive (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          cd skia/package-headers
+          tar czf ../../skia-${{ matrix.config.name }}-headers.tar.gz .
+
+      - name: Create headers archive (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          cd skia/package-headers
+          Compress-Archive -Path * -DestinationPath ../../skia-${{ matrix.config.name }}-headers.zip
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: skia-${{ matrix.config.name }}
           path: |
-            skia-*.tar.gz
-            skia-*.zip
+            skia-*-binaries.tar.gz
+            skia-*-binaries.zip
+            skia-*-headers.tar.gz
+            skia-*-headers.zip
           retention-days: 1
 
   release:
