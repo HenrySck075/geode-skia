@@ -176,70 +176,51 @@ jobs:
             exit 1
           }
 
-      - name: Package headers (Unix)
-        if: runner.os != 'Windows'
+      - name: Package headers
+        # Only package headers once since they're the same across all platforms
+        if: matrix.config.name == 'Windows'
+        shell: bash
         run: |
           cd skia
-          mkdir -p package-headers/include
+          mkdir -p package-headers
 
           # Copy headers from include directory
-          cp -r include/* package-headers/include/
+          cp -r include package-headers/
 
           # Copy headers from modules directory
           if [ -d "modules" ]; then
-            cp -r modules package-headers/include/
+            cp -r modules package-headers/
           fi
-
-      - name: Package headers (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          cd skia
-          New-Item -ItemType Directory -Force -Path package-headers/include
-
-          # Copy headers from include directory
-          Copy-Item -Path "include/*" -Destination "package-headers/include/" -Recurse -Force
-
-          # Copy headers from modules directory
-          if (Test-Path "modules") {
-            Copy-Item -Path "modules" -Destination "package-headers/include/" -Recurse -Force
-          }
 
       - name: Create binaries archive (Unix)
         if: runner.os != 'Windows'
         run: |
           cd skia/package-bin
-          tar czf ../../skia-${{ matrix.config.name }}-binaries.tar.gz .
+          tar czf ../../skia-${{ matrix.config.name }}-bin.tar.gz .
 
       - name: Create binaries archive (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           cd skia/package-bin
-          Compress-Archive -Path * -DestinationPath ../../skia-${{ matrix.config.name }}-binaries.zip
+          Compress-Archive -Path * -DestinationPath ../../skia-${{ matrix.config.name }}-bin.zip
 
-      - name: Create headers archive (Unix)
-        if: runner.os != 'Windows'
+      - name: Create headers archive
+        # Only create headers archive once since they're the same across all platforms
+        if: matrix.config.name == 'Windows'
+        shell: bash
         run: |
           cd skia/package-headers
-          tar czf ../../skia-${{ matrix.config.name }}-headers.tar.gz .
-
-      - name: Create headers archive (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          cd skia/package-headers
-          Compress-Archive -Path * -DestinationPath ../../skia-${{ matrix.config.name }}-headers.zip
+          tar czf ../../skia-headers.tar.gz .
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: skia-${{ matrix.config.name }}
           path: |
-            skia-*-binaries.tar.gz
-            skia-*-binaries.zip
-            skia-*-headers.tar.gz
-            skia-*-headers.zip
+            skia-*-bin.tar.gz
+            skia-*-bin.zip
+            skia-headers.tar.gz
           retention-days: 1
 
   release:
