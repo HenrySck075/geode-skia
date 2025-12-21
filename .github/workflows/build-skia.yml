@@ -178,7 +178,6 @@ jobs:
 
       - name: Package headers
         # Only package headers once since they're the same across all platforms
-        # Packaging this on windows breaks the archive god dayum
         if: matrix.config.name == 'Android64'
         shell: bash
         run: |
@@ -190,7 +189,7 @@ jobs:
 
           # Copy headers from modules directory
           if [ -d "modules" ]; then
-            cp -r modules package-headers/
+            rsync -av --include="*.hpp" --include="*.h" --filter='-! */' modules package-headers/
           fi
 
       - name: Create binaries archive (Unix)
