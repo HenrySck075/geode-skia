@@ -188,9 +188,10 @@ jobs:
           cp -r include package-headers/
 
           # Copy headers from modules directory
-          if [ -d "modules" ]; then
-            rsync -av --include="*.hpp" --include="*.h" --filter='-! */' modules package-headers/
-          fi
+          rsync -av --include="*.hpp" --include="*.h" --filter='-! */' modules package-headers/
+
+          # Copy headers from src directory, for some reason
+          rsync -av --include="*.hpp" --include="*.h" --filter='-! */' src package-headers/
 
       - name: Create binaries archive (Unix)
         if: runner.os != 'Windows'
