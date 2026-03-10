@@ -26,6 +26,9 @@ jobs:
           - name: macOS
             os: macos-latest
 
+          - name: Linux
+            os: ubuntu-latest
+
           - name: Android64
             os: ubuntu-latest
             target: Android64
@@ -74,6 +77,10 @@ jobs:
           sudo apt-get install -y clang lld
           echo "CC=clang" >> $GITHUB_ENV
           echo "CXX=clang++" >> $GITHUB_ENV
+          
+      - name: Install Dependencies (Linux)
+        if: matrix.config.name == 'Linux'
+        run: sudo apt-get install -y libfontconfig-dev libglu1-mesa-dev
 
       - name: Install Clang (macOS)
         if: runner.os == 'macOS'
