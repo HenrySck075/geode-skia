@@ -142,7 +142,7 @@ jobs:
         shell: bash
         run: |
           cd skia
-          third_party/gn/gn gen out/Release --args='${{ env.GN_ARGS }} skia_use_system_freetype2=false target_cpu="x64" cc="clang" cxx="clang++"'
+          third_party/gn/gn gen out/Release --args='${{ env.GN_ARGS }} skia_use_system_freetype2=true skia_enable_fontmgr_fontconfig=true skia_use_system_icu=true skia_use_icu=true target_cpu="x64" cc="clang" cxx="clang++"'
 
       - name: Build Skia (Unix)
         if: runner.os != 'Windows'
