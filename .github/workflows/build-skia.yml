@@ -29,9 +29,6 @@ jobs:
           - name: Linux
             os: ubuntu-latest
 
-          - name: LinuxAArch64
-            os: ubuntu-24.04-arm
-
           - name: Android64
             os: ubuntu-latest
     outputs:
@@ -145,12 +142,7 @@ jobs:
         run: |
           cd skia
           third_party/gn/gn gen out/Release --args='${{ env.GN_ARGS }} skia_use_system_freetype2=true skia_enable_fontmgr_fontconfig=true target_cpu="x64" cc="clang" cxx="clang++"'
-      - name: Configure Build (LinuxAArch64)
-        if: matrix.config.name == 'LinuxAArch64'
-        shell: bash
-        run: |
-          cd skia
-          third_party/gn/gn gen out/Release --args='${{ env.GN_ARGS }} skia_use_system_freetype2=true skia_enable_fontmgr_fontconfig=true target_cpu="arm64" cc="clang" cxx="clang++"'
+
       - name: Build Skia (Unix)
         if: runner.os != 'Windows'
         run: |
