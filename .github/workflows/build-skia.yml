@@ -134,7 +134,7 @@ jobs:
         shell: bash
         run: |
           cd skia
-          third_party/gn/gn gen out/Release --args='${{ env.GN_ARGS }} skia_use_system_freetype2=false target_os="android" target_cpu="arm64" ndk="'$ANDROID_NDK_HOME'" cc="clang" cxx="clang++"'
+          third_party/gn/gn gen out/Release --args='${{ env.GN_ARGS }} skia_use_vulkan=true skia_use_system_freetype2=false target_os="android" target_cpu="arm64" ndk="'$ANDROID_NDK_HOME'" cc="clang" cxx="clang++"'
 
       - name: Configure Build (Linux)
         if: matrix.config.name == 'Linux'
